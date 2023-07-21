@@ -1,4 +1,5 @@
 const readline = require('readline');
+const util = require('util');
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -7,56 +8,57 @@ const rl = readline.createInterface({
 
 const tareas = [];
 
-function agregarTarea() {
-  rl.question('Ingrese el indicador de la tarea: ', (indicador) => {
-    rl.question('Ingrese la descripción de la tarea: ', (descripcion) => {
-      const tarea = {
-        indicador,
-        descripcion,
-        completado: false
-      };
 
-      tareas.push(tarea);
-      console.log('Tarea agregada con éxito.');
-      MostrarMenu();
-    });
-  });
+const questionAsync = util.promisify(rl.question).bind(rl);
+
+function agregarTarea() {
+  return questionAsync('Ingrese el indicador de la tarea: ')
+    .then((indicador) => questionAsync('Ingrese la descripción de la tarea: ')
+      .then((descripcion) => {
+        const tarea = {
+          indicador,
+          descripcion,
+          completado: false
+        };
+        tareas.push(tarea);
+        console.log('Tarea agregada con éxito.');
+      })
+    );
 }
 
 function eliminarTarea() {
-  rl.question('Ingrese el índice de la tarea que desea eliminar: ', (index) => {
-    if (index >= 0 && index < tareas.length) {
-      tareas.splice(index, 1);
-      console.log('Tarea eliminada con éxito.');
-    } else {
-      console.log('Índice inválido.');
-    }
-    MostrarMenu();
-  });
+  return questionAsync('Ingrese el índice de la tarea que desea eliminar: ')
+    .then((index) => {
+      if (index >= 0 && index < tareas.length) {
+        tareas.splice(index, 1);
+        console.log('Tarea eliminada con éxito.');
+      } else {
+        console.log('Índice inválido.');
+      }
+    });
 }
 
-function completaTarea() {
-  rl.question('Ingrese el índice de la tarea que desea completar: ', (index) => {
-    if (index >= 0 && index < tareas.length) {
-      tareas[index].completado = true;
-      console.log('Tarea completada con éxito.');
-    } else {
-      console.log('Índice inválido.');
-    }
-    MostrarMenu();
-  });
+function completarTarea() {
+  return questionAsync('Ingrese el índice de la tarea que desea completar: ')
+    .then((index) => {
+      if (index >= 0 && index < tareas.length) {
+        tareas[index].completado = true;
+        console.log('Tarea completada con éxito.');
+      } else {
+        console.log('Índice inválido.');
+      }
+    });
 }
 
-function MostrarTareas() {
+function mostrarTareas() {
   console.log('Lista de tareas:');
   tareas.forEach((tarea, index) => {
     const status = tarea.completado ? '[x]' : '[ ]';
     console.log(`${index}. ${status} ${tarea.indicador} - ${tarea.descripcion}`);
   });
-  MostrarMenu();
 }
 
-function MostrarMenu() {
+async function mostrarMenu() {
   console.log('\nSeleccione una opción:');
   console.log('1. Añadir tarea');
   console.log('2. Eliminar tarea');
@@ -64,19 +66,20 @@ function MostrarMenu() {
   console.log('4. Mostrar tareas');
   console.log('5. Salir');
 
-  rl.question('Opción seleccionada: ', (option) => {
+  try {
+    const option = await questionAsync('Opción seleccionada: ');
     switch (option) {
       case '1':
-        agregarTarea();
+        await agregarTarea();
         break;
       case '2':
-        eliminarTarea();
+        await eliminarTarea();
         break;
       case '3':
-        completaTarea();
+        await completarTarea();
         break;
       case '4':
-        MostrarTareas();
+        mostrarTareas();
         break;
       case '5':
         console.log('Gracias, nos vemos pronto.');
@@ -84,10 +87,15 @@ function MostrarMenu() {
         break;
       default:
         console.log('Opción inválida.');
-        MostrarMenu();
+        mostrarMenu();
         break;
     }
-  });
+    
+  } catch (error) {
+    console.error('Error:', error);
+    rl.close();
+  }
 }
 
-MostrarMenu();
+mostrarMenu();
+
